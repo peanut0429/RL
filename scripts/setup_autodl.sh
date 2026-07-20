@@ -12,8 +12,8 @@ echo "============================================"
 
 # ---------- 1. 系统依赖 ----------
 echo "[1/5] 安装系统依赖..."
-sudo apt-get update -qq
-sudo apt-get install -y -qq libsdl2-dev xvfb > /dev/null 2>&1
+apt-get update -qq
+apt-get install -y -qq libsdl2-dev xvfb > /dev/null 2>&1
 
 # ---------- 2. 创建虚拟环境 ----------
 echo "[2/5] 创建 Python 虚拟环境..."

@@ -1,20 +1,27 @@
-setuptools==65.5.0
-wheel<0.40.0 # 4 ÕâÁ½¸ö¹¤¾ß°æ±¾Ò²ÒªµÍ£¬ÎªÁËÖ§³ÖµÍ°æ±¾µÄgymºÍsb3
+# -*- coding: UTF-8 -*-
+# ============================================================
+# RL_SuperMario ä¾èµ–åˆ—è¡¨
+# ç‰ˆæœ¬é”å®šè¯´æ˜ï¼š
+#   1. gym==0.21.0: æ—§ç‰ˆ gymï¼Œå…¼å®¹ gym-super-mario-bros==7.3.0
+#   2. protobuf==3.20.3: è§£å†³ TensorBoard å…¼å®¹æ€§é—®é¢˜
+#   3. stable_baselines3==1.6.0: ç‰ˆæœ¬ä¸èƒ½æ›´é«˜ï¼ˆæ–°ç‰ˆ SB3 éœ€è¦æ–°ç‰ˆ gymï¼‰
+#   4. wheel<0.40.0: ä½ç‰ˆæœ¬å…¼å®¹æ—§çš„ gym å’Œ SB3
+# ============================================================
 
-gym==0.21.0 # 1 Õâ¸öµÍ°æ±¾·µ»Ø4¸ö×´Ì¬£¬ÎªÁË¼æÈİÉÏ²ãµÄgym-super-mario-bros
+setuptools==65.5.0
+wheel<0.40.0
+
+gym==0.21.0
 gym-super-mario-bros==7.3.0
 
 tensorboard
 six
-protobuf==3.20.3 # 2 ÎªÁË½â¾ötensorboardÔËĞĞÎÊÌâ
+protobuf==3.20.3
 icecream
 imageio
 opencv-python
 nes_py==8.2.1
 numpy==1.24.4
 
-
 shimmy>=2.0
-stable_baselines3==1.6.0 # 3 ÒòÎªgym°æ±¾ÎªÁËÖ§³Ögym-super-mario-brosÊÇµÍ°æ±¾£¬gymÒ²Ö§³ÖSB3£¬SB3°æ±¾²»ÄÜ¸ß
-
-
+stable_baselines3==1.6.0
