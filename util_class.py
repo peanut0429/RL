@@ -78,39 +78,71 @@ class SkipFrame(gym.Wrapper):
 
 
 class RewardWrapper(gym.core.RewardWrapper):
-    def __init__(self,env):
+    """
+    自定义奖励包装器。
+
+    基础奖励（gym 自带）：x 轴位移（向右移动给正奖励）。
+    本包装器在此基础上叠加额外奖励，引导 AI 学习更丰富的策略。
+
+    奖励设计原则：
+    - 通关是第一目标，奖励远大于其他事件
+    - 金币/杀敌/道具是次要目标，适度奖励但不喧宾夺主
+    - 死亡重罚，防止 AI 不在乎命数
+    - 不使用 score 差值（与金币/杀敌重复计算）
+    """
+
+    def __init__(self, env):
         super(RewardWrapper, self).__init__(env)
-        self.coins = 0
-        self.score = 0
-        self.life=2
+        self._coins = 0
+        self._life = 2
+        self._status = 'small'  # Mario 状态: small / tall / fireball
+        self._x_prev = 0
+        self._stuck_steps = 0
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
-        # print('info:',info)
-        info_dict=info
+        info_dict = info
         coins = info_dict['coins']
-        flag_get = info_dict['flag_get']
-        score = info_dict['score']
         life = info_dict['life']
+        status = info_dict.get('status', 'small')
+        x_pos = info_dict.get('x_pos', 0)
+        flag_get = info_dict['flag_get']
 
-        # 如果coins大于self.coins, 奖励累加
-        if coins > self.coins:
-            reward += 200
-            self.coins = coins
-        # 如果flag_get为True, 奖励累加
+        # --- 1. 通关奖励 ---
         if flag_get:
-            reward += 200
+            reward += 2000  # 远大于其他奖励，引导通关优先
 
-        if score > self.score:
-            reward+=score-self.score
-            self.score = score
+        # --- 2. 吃金币 ---
+        if coins > self._coins:
+            reward += 100  # 适中，鼓励但不会为金币放弃通关
+            self._coins = coins
 
-        if life<self.life:
-            reward-=500
-            self.life=life
+        # --- 3. 获得道具（变高/火焰花） ---
+        if status != self._status and self._status == 'small' and status in ('tall', 'fireball'):
+            reward += 300  # 变高能吃一次伤害，价值高于金币
+        self._status = status
 
+        # --- 4. 死亡惩罚 ---
+        if life < self._life:
+            reward -= 500  # 命 = 继续前进的机会，重罚合理
+            self._life = life
+
+        # --- 5. 卡住惩罚（推动探索） ---
+        if x_pos <= self._x_prev + 2:  # 几乎没前进
+            self._stuck_steps += 1
+        else:
+            self._stuck_steps = 0
+        self._x_prev = x_pos
+
+        if self._stuck_steps > 30:  # 约 2 秒不动
+            reward -= 5  # 轻微惩罚，鼓励移动
+
+        # --- 重置 ---
         if done:
-            self.coins, self.score,self.life = 0, 0,3
+            self._coins = 0
+            self._life = 2
+            self._status = 'small'
+            self._stuck_steps = 0
 
         return observation, reward, done, info
 

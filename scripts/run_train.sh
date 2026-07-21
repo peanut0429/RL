@@ -17,10 +17,13 @@ mkdir -p monitor_log tensorboard_log
 # ---------- 配置 ----------
 SESSION_NAME="mario_train"
 
-# 检查是否已在 tmux 中运行
-if [ -n "$TMUX" ]; then
-    echo "已在 tmux 会话中，直接启动训练..."
-    python train.py
+# 如果 tmux 不可用，退化为 nohup 模式
+if ! command -v tmux &> /dev/null; then
+    echo "⚠️  tmux 未安装，使用 nohup 模式"
+    echo "  训练日志输出到 training.log"
+    echo "  查看日志: tail -f training.log"
+    nohup python train.py > training.log 2>&1 &
+    echo "训练已在后台启动！(PID: $!)"
     exit 0
 fi
 

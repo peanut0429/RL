@@ -9,13 +9,14 @@ from gym.wrappers import GrayScaleObservation, ResizeObservation
 from stable_baselines3.common.vec_env import DummyVecEnv,SubprocVecEnv
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.monitor import Monitor
-from util_class import SaveOnBestTrainingRewardCallback, SkipFrame
+from util_class import SaveOnBestTrainingRewardCallback, SkipFrame, RewardWrapper
 
 
 
 def make_env():
     env = gym_super_mario_bros.make('SuperMarioBros-v2')
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
+    env = RewardWrapper(env)  # 自定义奖励
     env = SkipFrame(env, 4)
     env = GrayScaleObservation(env, keep_dim=True)
     env = ResizeObservation(env, shape=(84, 84))
