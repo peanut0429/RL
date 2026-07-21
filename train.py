@@ -21,7 +21,8 @@ from util_class import SaveOnBestTrainingRewardCallback, SkipFrame, RewardWrappe
 def make_env():
     env = gym_super_mario_bros.make('SuperMarioBros-v2')
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
-    env = RewardWrapper(env)  # 自定义奖励
+    # RewardWrapper 已移除——基础奖励（x 位移）就够用
+    env = SkipFrame(env, 4)
     env = SkipFrame(env, 4)
     env = GrayScaleObservation(env, keep_dim=True)
     env = ResizeObservation(env, shape=(84, 84))
