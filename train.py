@@ -1,5 +1,6 @@
 import os
 import uuid
+import random
 import torch
 
 # GPU 加速优化
@@ -8,38 +9,46 @@ torch.set_num_threads(1)  # 避免 PyTorch 和子进程抢 CPU 核心
 
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
-from gym_super_mario_bros.actions import COMPLEX_MOVEMENT,SIMPLE_MOVEMENT
+from gym_super_mario_bros.actions import COMPLEX_MOVEMENT, SIMPLE_MOVEMENT
 from stable_baselines3 import PPO
 from gym.wrappers import GrayScaleObservation, ResizeObservation
-from stable_baselines3.common.vec_env import DummyVecEnv,SubprocVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.monitor import Monitor
-from util_class import SaveOnBestTrainingRewardCallback, SkipFrame, RewardWrapper
+from util_class import SaveOnBestTrainingRewardCallback, SkipFrame
 
+# ============================================================
+# 训练配置
+# ============================================================
+ACTION_SPACE = COMPLEX_MOVEMENT   # 12 个动作（含跑、上下、跑跳组合）
+# ACTION_SPACE = SIMPLE_MOVEMENT  # 7 个动作（简单版）
+STAGES = ['1-1', '1-2', '1-3', '1-4']  # 世界 1 全部关卡，随机抽取
+SKIP_FRAMES = 4
+OBS_SHAPE = (84, 84)
 
 
 def make_env():
-    env = gym_super_mario_bros.make('SuperMarioBros-v2')
-    env = JoypadSpace(env, SIMPLE_MOVEMENT)
-    # RewardWrapper 已移除——基础奖励（x 位移）就够用
-    env = SkipFrame(env, 4)
-    env = SkipFrame(env, 4)
+    """每次调用随机选一个关卡，训练泛化能力"""
+    stage = random.choice(STAGES)
+    env = gym_super_mario_bros.make(f'SuperMarioBros-{stage}-v2')
+    env = JoypadSpace(env, ACTION_SPACE)
+    env = SkipFrame(env, SKIP_FRAMES)
     env = GrayScaleObservation(env, keep_dim=True)
-    env = ResizeObservation(env, shape=(84, 84))
+    env = ResizeObservation(env, shape=OBS_SHAPE)
     monitor_dir = r'./monitor_log/'
     env = Monitor(env, filename=os.path.join(monitor_dir, str(uuid.uuid4())))
     return env
 
 def train_fn():
-    total_timesteps = 40e6 # 总共多少步
-    check_frq=100000 # 十万
-    num_envs = 14  # 12 核 CPU 最大化利用
-    n_steps = 1024  # 更频繁更新 GPU，减少等待
+    total_timesteps = 60e6  # 4 个随机关卡，需要更多步数
+    check_frq = 100000  # 十万
+    num_envs = 14       # 12 核 CPU 最大化利用
+    n_steps = 1024      # 更频繁更新 GPU，减少等待
     model_params = {
         'learning_rate': 3e-4,  # 学习率
-        'n_steps': n_steps,  # 每个环境每次更新的步数
-        'batch_size': 8192,  # 随机抽取多少数据
-        'ent_coef': 0.1,  # 熵项系数, 影响探索性
+        'n_steps': n_steps,     # 每个环境每次更新的步数
+        'batch_size': 8192,     # 随机抽取多少数据
+        'ent_coef': 0.15,       # 熵项系数，12 个动作需要更多探索
 
         'gamma': 0.95,  # 短视或者长远
         'clip_range': 0.1,  # 截断范围
