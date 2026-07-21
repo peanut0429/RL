@@ -52,6 +52,7 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
                         print(f"Saving new best model at {x[-1]} timesteps")
                         print(f"Saving new best model to {self.save_path}")
                     self.model.save(f'{self.save_path}/best_model{x[-1]}')
+                    self.model.save(f'{self.save_path}/latest_model')  # 用于续训
 
         return True
 
@@ -79,70 +80,57 @@ class SkipFrame(gym.Wrapper):
 
 class RewardWrapper(gym.core.RewardWrapper):
     """
-    自定义奖励包装器。
+    自定义奖励包装器 —— 在基础 x 位移奖励上叠加额外引导。
 
-    基础奖励（gym 自带）：x 轴位移（向右移动给正奖励）。
-    本包装器在此基础上叠加额外奖励，引导 AI 学习更丰富的策略。
-
-    奖励设计原则：
-    - 通关是第一目标，奖励远大于其他事件
-    - 金币/杀敌/道具是次要目标，适度奖励但不喧宾夺主
-    - 死亡重罚，防止 AI 不在乎命数
-    - 不使用 score 差值（与金币/杀敌重复计算）
+    设计原则：额外奖励要和基础奖励（每步 +1~15）同量级，
+    不能喧宾夺主。所有惩罚项都要有"攒够才触发"的容错窗口。
     """
 
     def __init__(self, env):
         super(RewardWrapper, self).__init__(env)
         self._coins = 0
         self._life = 2
-        self._status = 'small'  # Mario 状态: small / tall / fireball
-        self._x_prev = 0
-        self._stuck_steps = 0
+        self._x_max = 0       # 本局最远 x 坐标
+        self._stuck_timer = 0  # 连续无进展的步数
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
         info_dict = info
         coins = info_dict['coins']
         life = info_dict['life']
-        status = info_dict.get('status', 'small')
-        x_pos = info_dict.get('x_pos', 0)
         flag_get = info_dict['flag_get']
+        x_pos = info_dict.get('x_pos', self._x_max)
 
         # --- 1. 通关奖励 ---
         if flag_get:
-            reward += 2000  # 远大于其他奖励，引导通关优先
+            reward += 500  # 等于 30-50 步移动的收益，够大但不夸张
 
         # --- 2. 吃金币 ---
         if coins > self._coins:
-            reward += 100  # 适中，鼓励但不会为金币放弃通关
+            reward += 10  # 等于 1 步移动，是正反馈但不喧宾夺主
             self._coins = coins
 
-        # --- 3. 获得道具（变高/火焰花） ---
-        if status != self._status and self._status == 'small' and status in ('tall', 'fireball'):
-            reward += 300  # 变高能吃一次伤害，价值高于金币
-        self._status = status
-
-        # --- 4. 死亡惩罚 ---
+        # --- 3. 死亡惩罚 ---
         if life < self._life:
-            reward -= 500  # 命 = 继续前进的机会，重罚合理
+            reward -= 50  # 等于 5 步移动，有痛感但不会崩盘
             self._life = life
 
-        # --- 5. 卡住惩罚（推动探索） ---
-        if x_pos <= self._x_prev + 2:  # 几乎没前进
-            self._stuck_steps += 1
+        # --- 4. 卡住惩罚（容错窗口：100 步无进展才触发） ---
+        if x_pos > self._x_max + 5:  # 进步超过 5 像素才算"有进展"
+            self._x_max = x_pos
+            self._stuck_timer = 0
         else:
-            self._stuck_steps = 0
-        self._x_prev = x_pos
+            self._stuck_timer += 1
 
-        if self._stuck_steps > 30:  # 约 2 秒不动
-            reward -= 5  # 轻微惩罚，鼓励移动
+        if self._stuck_timer > 100:  # 约 7 秒不动
+            reward -= 1  # 极轻惩罚，只推动探索
 
         # --- 重置 ---
         if done:
             self._coins = 0
             self._life = 2
-            self._status = 'small'
-            self._stuck_steps = 0
+            self._x_max = 0
+            self._stuck_timer = 0
 
         return observation, reward, done, info
 

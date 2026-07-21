@@ -1,5 +1,9 @@
 import os
 import uuid
+import torch
+
+# GPU 加速优化
+torch.backends.cudnn.benchmark = True  # 自动寻找最优卷积算法
 
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
@@ -27,7 +31,7 @@ def make_env():
 def train_fn():
     total_timesteps = 40e6 # 总共多少步
     check_frq=100000 # 十万
-    num_envs = 1
+    num_envs = 10
     model_params = {
         'learning_rate': 3e-4,  # 学习率
         'n_steps': 2048,  # 每个环境每次更新的步数
@@ -56,10 +60,24 @@ def train_fn():
 
     env = SubprocVecEnv([make_env for _ in range(num_envs)])
     env = VecFrameStack(env, 4, channels_order='last')  # 帧叠加
-    # 训练
-    # model=PPO.load('monitor_log/best_model/best_model.zip', env=env, **model_params)
-    model = PPO(env= env, **model_params)
-    model.learn(total_timesteps=total_timesteps,callback=callback)
+
+    # 训练：优先级——微调模型 > 续训 checkpoint > 从头开始
+    finetune_model = 'base_model.zip'  # 把旧模型放这，自动微调
+    latest_model = os.path.join(monitor_dir, 'best_model', 'latest_model.zip')
+
+    if os.path.exists(finetune_model):
+        print(f"微调模式: 加载基础模型 {finetune_model}")
+        model = PPO.load(finetune_model, env=env)
+        model.learning_rate = 1e-4  # 微调用更低学习率
+        print(f"学习率已降至: {model.learning_rate}")
+    elif os.path.exists(latest_model):
+        print(f"续训: {latest_model}")
+        model = PPO.load(latest_model, env=env)
+    else:
+        print("从头开始训练")
+        model = PPO(env=env, **model_params)
+
+    model.learn(total_timesteps=total_timesteps, callback=callback)
 
 
 
