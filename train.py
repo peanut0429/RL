@@ -4,6 +4,7 @@ import torch
 
 # GPU 加速优化
 torch.backends.cudnn.benchmark = True  # 自动寻找最优卷积算法
+torch.set_num_threads(1)  # 避免 PyTorch 和子进程抢 CPU 核心
 
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
@@ -31,10 +32,11 @@ def make_env():
 def train_fn():
     total_timesteps = 40e6 # 总共多少步
     check_frq=100000 # 十万
-    num_envs = 10
+    num_envs = 14  # 12 核 CPU 最大化利用
+    n_steps = 1024  # 更频繁更新 GPU，减少等待
     model_params = {
         'learning_rate': 3e-4,  # 学习率
-        'n_steps': 2048,  # 每个环境每次更新的步数
+        'n_steps': n_steps,  # 每个环境每次更新的步数
         'batch_size': 8192,  # 随机抽取多少数据
         'ent_coef': 0.1,  # 熵项系数, 影响探索性
 
