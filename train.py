@@ -20,9 +20,8 @@ from util_class import SaveOnBestTrainingRewardCallback, SkipFrame
 # ============================================================
 # 训练配置
 # ============================================================
-ACTION_SPACE = COMPLEX_MOVEMENT   # 12 个动作（含跑、上下、跑跳组合）
-# ACTION_SPACE = SIMPLE_MOVEMENT  # 7 个动作（简单版）
-STAGES = ['1-1', '1-2', '1-3', '1-4']  # 世界 1 全部关卡，随机抽取
+ACTION_SPACE = SIMPLE_MOVEMENT   # 7 个动作，简单高效
+STAGES = ['1-1']                  # 单关训练，收敛快
 SKIP_FRAMES = 4
 OBS_SHAPE = (84, 84)
 
@@ -40,7 +39,7 @@ def make_env():
     return env
 
 def train_fn():
-    total_timesteps = 60e6  # 4 个随机关卡，需要更多步数
+    total_timesteps = 30e6  # 单关 1-1，30M 步足够收敛
     check_frq = 100000  # 十万
     num_envs = 14       # 12 核 CPU 最大化利用
     n_steps = 1024      # 更频繁更新 GPU，减少等待
