@@ -38,15 +38,8 @@ python play_mario.py
 
 【强化学习训练超级马里奥（stablebaseline3框架）】 https://www.bilibili.com/video/BV1CERYY3EjA/?p=2&share_source=copy_web&vd_source=dbb60edcfbcee053b3e3e7aa16ec24be
 
-# 文档索引
-
-| 文档 | 内容 |
-|------|------|
-| `PRINCIPLES.md` | RL 入门原理与参数详解 |
-| `EXPERIMENT_REPORT.md` | 五轮实验完整报告 |
-| `PROGRESS_REPORT_16M.md` | 16M 步训练阶段分析 |
-| `INTERNSHIP_SUMMARY.md` | 实习工作总结 |
-| `CLOUD_TRAINING.md` | 云 GPU 训练方法论 |
+# 训练奖励曲线
+![img](image.png)
 
 # 前置知识截图
 
