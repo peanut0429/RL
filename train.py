@@ -15,7 +15,7 @@ from gym.wrappers import GrayScaleObservation, ResizeObservation
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.monitor import Monitor
-from util_class import SaveOnBestTrainingRewardCallback, SkipFrame
+from util_class import SaveOnBestTrainingRewardCallback, SkipFrame, RewardWrapper
 
 # ============================================================
 # 训练配置
@@ -31,6 +31,7 @@ def make_env():
     stage = random.choice(STAGES)
     env = gym_super_mario_bros.make(f'SuperMarioBros-{stage}-v2')
     env = JoypadSpace(env, ACTION_SPACE)
+    env = RewardWrapper(env)  # 卡住会罚分，推动 AI 尝试往左
     env = SkipFrame(env, SKIP_FRAMES)
     env = GrayScaleObservation(env, keep_dim=True)
     env = ResizeObservation(env, shape=OBS_SHAPE)

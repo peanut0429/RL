@@ -3,3 +3,4 @@
 /venv/
 /monitor_log/
 /__pycache__/
+.claude

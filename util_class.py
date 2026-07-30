@@ -90,8 +90,10 @@ class RewardWrapper(gym.core.RewardWrapper):
         super(RewardWrapper, self).__init__(env)
         self._coins = 0
         self._life = 2
-        self._x_max = 0       # 本局最远 x 坐标
-        self._stuck_timer = 0  # 连续无进展的步数
+        self._x_max = 0         # 本局最远 x 坐标
+        self._stuck_timer = 0   # 连续无进展的步数
+        self._step_count = 0    # 本局步数
+        self._world = 1         # 当前世界，检测跳关
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
@@ -100,30 +102,47 @@ class RewardWrapper(gym.core.RewardWrapper):
         life = info_dict['life']
         flag_get = info_dict['flag_get']
         x_pos = info_dict.get('x_pos', self._x_max)
+        self._step_count += 1
 
-        # --- 1. 通关奖励 ---
+        # --- 1. 生存奖励（极小，让等待和后退不被惩罚） ---
+        reward += 0.05  # 每活一步就有一点，鼓励活着
+
+        # --- 2. 通关奖励 ---
         if flag_get:
-            reward += 500  # 等于 30-50 步移动的收益，够大但不夸张
+            reward += 500
 
-        # --- 2. 吃金币 ---
+        # --- 3. 吃金币 ---
         if coins > self._coins:
-            reward += 10  # 等于 1 步移动，是正反馈但不喧宾夺主
+            reward += 10
             self._coins = coins
 
-        # --- 3. 死亡惩罚 ---
+        # --- 4. 死亡惩罚 ---
         if life < self._life:
-            reward -= 50  # 等于 5 步移动，有痛感但不会崩盘
+            reward -= 50
             self._life = life
 
-        # --- 4. 卡住惩罚（容错窗口：100 步无进展才触发） ---
-        if x_pos > self._x_max + 5:  # 进步超过 5 像素才算"有进展"
+        # --- 5. 卡住惩罚 + 后退逃离奖励 ---
+        if x_pos > self._x_max + 5:
+            # 向右有进展，重置计时
             self._x_max = x_pos
             self._stuck_timer = 0
         else:
             self._stuck_timer += 1
+            # 关键：卡住时往左走是正确策略，给予正向引导
+            if x_pos < self._x_max - 10:
+                reward += 3  # 后退逃离，正反馈
+                self._stuck_timer = 0  # 重置计时
 
-        if self._stuck_timer > 100:  # 约 7 秒不动
-            reward -= 1  # 极轻惩罚，只推动探索
+        if self._stuck_timer > 50:   # 卡住 3 秒
+            reward -= 2
+        if self._stuck_timer > 150:  # 卡住 10 秒，必须试别的方向
+            reward -= 10
+
+        # --- 6. 跳关惩罚（防止进入 warp pipe） ---
+        world_now = info_dict.get('world', self._world)
+        if world_now > self._world:
+            reward -= 300   # 重罚跳关
+        self._world = world_now
 
         # --- 重置 ---
         if done:
@@ -131,6 +150,7 @@ class RewardWrapper(gym.core.RewardWrapper):
             self._life = 2
             self._x_max = 0
             self._stuck_timer = 0
+            self._step_count = 0
 
         return observation, reward, done, info
 
