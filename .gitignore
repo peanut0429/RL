@@ -1,5 +1,4 @@
 .idea
-.zip
 /venv/
 /monitor_log/
 /__pycache__/
